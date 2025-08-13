@@ -11,7 +11,7 @@ The project applies to:
 
 ---
 
-## 🛠 Tools & Technologies
+## Tools & Technologies
 | Tool/Library         | Purpose |
 |----------------------|---------|
 | Python               | Core programming language |
