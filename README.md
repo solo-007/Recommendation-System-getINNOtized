@@ -59,9 +59,7 @@ recommendation-system-getINNOtized/
 
 ├── data/                  # Raw and processed datasets
 
-├── notebooks/             # Jupyter notebooks for EDA, modeling
-
-├── scripts/               # Python scripts for preprocessing, training
+├── notebooks/             # Jupyter notebooks for EDA, preprocessing, training and modeling
 
 ├── models/                # Saved model files
 
