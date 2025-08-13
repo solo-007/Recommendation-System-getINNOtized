@@ -63,10 +63,15 @@ recommendation-system-project/
 ├── scripts/               # Python scripts for preprocessing, training
 
 ├── models/                # Saved model files
+
 ├── visualizations/        # Charts, dashboards
+
 ├── presentation/          # Final slides (PPT and PDF)
+
 ├── README.md              # Project overview and documentation
+
 ├── .gitignore             # Python template
+
 └── requirements.txt
 
 recommendation-system-getINNOtized/
