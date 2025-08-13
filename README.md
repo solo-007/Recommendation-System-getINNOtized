@@ -104,5 +104,5 @@ recommendation-system-getINNOtized/
 ## Getting Started
 ### Clone the repository
 ```bash
-git clone https://github.com/<your-username>/recommendation-system-getINNOtized.git
+git clone https://github.com/solo-007/recommendation-system-project.git
 cd recommendation-system-getINNOtized
