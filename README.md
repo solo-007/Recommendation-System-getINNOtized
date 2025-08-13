@@ -55,7 +55,7 @@ The project applies to:
 
 ## Project Structure
 
-recommendation-system-project/
+recommendation-system-getINNOtized/
 ├── data/                  # Raw and processed datasets
 
 ├── notebooks/             # Jupyter notebooks for EDA, modeling
@@ -74,35 +74,11 @@ recommendation-system-project/
 
 └── requirements.txt
 
-recommendation-system-getINNOtized/
-├── data/
-│   ├── raw/               # events.csv, item_properties.csv, category_tree.csv
-│   ├── processed/         # cleaned & merged datasets
-│
-├── notebooks/
-│   ├── 01_business_understanding.ipynb
-│   ├── 02_data_understanding.ipynb
-│   ├── 03_data_preparation.ipynb
-│   ├── 04_modeling.ipynb
-│   ├── 05_evaluation.ipynb
-│
-├── src/
-│   ├── data_loading.py
-│   ├── feature_engineering.py
-│   ├── recommenders.py
-│   ├── anomaly_detection.py
-│   ├── visualization.py
-│
-├── models/
-├── visuals/
-├── docs/
-├── README.md
-└── requirements.txt
 
 ---
 
 ## Getting Started
 ### Clone the repository
 ```bash
-git clone https://github.com/solo-007/recommendation-system-project.git
+git clone https://github.com/solo-007/recommendation-system-getINNOtized.git
 cd recommendation-system-getINNOtized
