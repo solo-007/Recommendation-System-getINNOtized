@@ -57,8 +57,11 @@ The project applies to:
 
 recommendation-system-project/
 ├── data/                  # Raw and processed datasets
+
 ├── notebooks/             # Jupyter notebooks for EDA, modeling
+
 ├── scripts/               # Python scripts for preprocessing, training
+
 ├── models/                # Saved model files
 ├── visualizations/        # Charts, dashboards
 ├── presentation/          # Final slides (PPT and PDF)
