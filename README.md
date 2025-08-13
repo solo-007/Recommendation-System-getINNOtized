@@ -56,6 +56,7 @@ The project applies to:
 ## Project Structure
 
 recommendation-system-getINNOtized/
+
 ├── data/                  # Raw and processed datasets
 
 ├── notebooks/             # Jupyter notebooks for EDA, modeling
