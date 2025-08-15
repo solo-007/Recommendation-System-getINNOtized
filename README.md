@@ -2,13 +2,11 @@
 
 ## Overview
 This project develops a **Recommendation System** to provide personalized suggestions based on user behavior and preferences.  
-It follows the **CRISP-DM** methodology and explores multiple recommendation approaches, including collaborative filtering, content-based, and hybrid methods.
+It follows the **CRISP-DM** methodology and explores recommendation approaches.
 
 The project applies to:
 - Product recommendations for e-commerce
-- Content suggestions for media platforms
-- Service recommendations for subscription platforms
-
+- 
 ---
 
 ## Tools & Technologies
@@ -41,13 +39,12 @@ The project applies to:
 5.	Can we predict a user's next likely purchase or content choice?
 6.	Which users are most likely to churn (stop engaging)?
 7.	Can we recommend diverse products to expand user interests?
-8.	
 
 ---
 
 ## Deliverables
 - Jupyter Notebooks with analysis & modeling
-- Trained recommendation model(s)
+- Predictions and Abnormality detections
 - Data visualizations answering business questions
 - Comprehensive project documentation
 - Presentation file summarizing results & insights
