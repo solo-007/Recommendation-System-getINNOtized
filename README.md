@@ -34,13 +34,14 @@ The project applies to:
 ---
 
 ## Analytical Questions
-1. Which products/content are most frequently interacted with by users?
-2. Which user segments have similar purchase/viewing behaviors?
-3. Can we predict a user's next likely purchase or content choice?
-4. What products/content have high engagement but low recommendation exposure?
-5. How do seasonal trends affect product/content interactions?
-6. Which users are most likely to churn (stop engaging)?
-7. Can we recommend diverse products to expand user interests?
+1.	Which products/content are most frequently interacted with by users?
+2.	Which user segments have similar purchase/viewing behaviors?
+3.	What products/content have high engagement but low recommendation exposure?
+4.	How do seasonal trends affect product/content interactions?
+5.	Can we predict a user's next likely purchase or content choice?
+6.	Which users are most likely to churn (stop engaging)?
+7.	Can we recommend diverse products to expand user interests?
+8.	
 
 ---
 
