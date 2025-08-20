@@ -1,12 +1,17 @@
 # Recommendation System Project – getINNOtized
+<img width="768" height="577" alt="CRISP-DM" src="https://media.licdn.com/dms/image/C4E12AQGZXG-omsKv3g/article-cover_image-shrink_720_1280/0/1597499469493?e=2147483647&v=beta&t=QMg5FypP7FDW4wKoSaIEQnI34DeVM1NMO-uMyZ24kt0" />
+
 
 ## Overview
 This project develops a **Recommendation System** to provide personalized suggestions based on user behavior and preferences.  
 It follows the **CRISP-DM** methodology and explores recommendation approaches.
 
-The project applies to:
-- Product recommendations for e-commerce
-- 
+The project aims to:
+• Find abnormal users of e-shop. 
+• Generate features 
+• Build a model 
+• Create a metric that helps to evaluate quality of the model 
+
 ---
 
 ## Tools & Technologies
