@@ -18,7 +18,9 @@ The project aims to:
 The analysis utilizes three datasets:
 
 `events.csv`: Contains user interaction events with timestamps, visitor IDs, event types (view, addtocart, transaction), item IDs, and transaction IDs (for transaction events).
+
 `item_properties.csv`: Contains item properties with timestamps, item IDs, property names, and property values.
+
 `category_tree.сsv`: which describes category tree
 
 ---
