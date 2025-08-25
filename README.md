@@ -3,7 +3,7 @@
 
 
 ## Overview
-This project develops a **Recommendation System** to provide personalized suggestions based on user behavior and preferences.  
+This project analyzes e-commerce event data to understand user behavior, predict item properties, identify abnormal users, and develop recommendation algorithms. The goal is to leverage these insights to enhance the product page experience and improve user engagement and conversion.
 It follows the **CRISP-DM** methodology and explores recommendation approaches.
 
 The project aims to:
@@ -14,6 +14,14 @@ The project aims to:
 
 ---
 
+## Data Description
+The analysis utilizes three datasets:
+
+`events.csv`: Contains user interaction events with timestamps, visitor IDs, event types (view, addtocart, transaction), item IDs, and transaction IDs (for transaction events).
+`item_properties.csv`: Contains item properties with timestamps, item IDs, property names, and property values.
+`category_tree.сsv`: which describes category tree
+
+---
 ## Tools & Technologies
 | Tool/Library         | Purpose |
 |----------------------|---------|
@@ -21,7 +29,7 @@ The project aims to:
 | Pandas, NumPy        | Data manipulation & preprocessing |
 | Matplotlib, Seaborn  | Data visualization |
 | scikit-learn         | Machine learning & evaluation |
-| Surprise / LightFM   | Building recommendation models |
+| TF-IDF / Linear Kernel   | Building recommendation models |
 | Git & GitHub         | Version control & project tracking |
 
 ---
@@ -30,9 +38,9 @@ The project aims to:
 1. **Business Understanding** – Define objectives & business questions
 2. **Data Understanding** – Explore and profile the dataset
 3. **Data Preparation** – Clean & prepare data for modeling
-4. **Modeling** – Build recommendation algorithms
-5. **Evaluation** – Assess performance with metrics like RMSE, Precision@K
-6. **Deployment** – Present results & optional interactive demo
+4. **Modeling** – Build Predictive Modeling and Recommendation Algorithms
+6. **Evaluation** – Assess performance with metrics like Accuracy, Precision@K, Recall@K
+7. **Deployment** – Present results & optional interactive demo
 
 ---
 
@@ -41,9 +49,10 @@ The project aims to:
 2.	Which user segments have similar purchase/viewing behaviors?
 3.	What products/content have high engagement but low recommendation exposure?
 4.	How do seasonal trends affect product/content interactions?
-5.	Can we predict a user's next likely purchase or content choice?
-6.	Which users are most likely to churn (stop engaging)?
-7.	Can we recommend diverse products to expand user interests?
+5.	What time of the day does purchase activity increases?
+6.	What are the most frequent item id predicted?
+7.	What is the percentage of visitors who made purchase?
+8.	What are the total transactions over time?
 
 ---
 
