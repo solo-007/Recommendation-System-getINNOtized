@@ -54,58 +54,109 @@ else:
         st.dataframe(category_tree.head())
 
 # -------------------------------
-# Content-Based Filtering
+# Content-Based Filtering (CBF) with NearestNeighbors
 # -------------------------------
 st.header("🎯 Content-Based Filtering (CBF)")
 
-item_features = item_props_sample.groupby("itemid")["value"].apply(lambda x: " ".join(x.astype(str))).reset_index()
+from sklearn.neighbors import NearestNeighbors
+
+# Build item profiles (combine all property values into a text string per item)
+item_features = (
+    item_props_sample.groupby("itemid")["value"]
+    .apply(lambda x: " ".join(x.astype(str)))
+    .reset_index()
+)
+
+# TF-IDF vectorization
 tfidf = TfidfVectorizer(stop_words="english")
 tfidf_matrix = tfidf.fit_transform(item_features["value"])
-cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
+
+# Use Nearest Neighbors instead of full similarity matrix
+nn_model = NearestNeighbors(metric="cosine", algorithm="brute")
+nn_model.fit(tfidf_matrix)
+
+# Map item_id to index
 indices = pd.Series(item_features.index, index=item_features["itemid"])
 
 def recommend_content(itemid, top_n=5):
+    """Return top_n most similar items for a given itemid"""
     if itemid not in indices:
         return []
     idx = indices[itemid]
-    sim_scores = list(enumerate(cosine_sim[idx]))
-    sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)[1:top_n+1]
-    item_indices = [i[0] for i in sim_scores]
-    return item_features.iloc[item_indices]["itemid"].tolist()
+    distances, neighbors = nn_model.kneighbors(tfidf_matrix[idx], n_neighbors=top_n+1)
+    neighbor_ids = neighbors.flatten()[1:]  # skip the item itself
+    return item_features.iloc[neighbor_ids]["itemid"].tolist()
 
+# Streamlit UI
 itemid_input = st.number_input("Enter an Item ID:", min_value=0, step=1, key="cbf")
 if st.button("Get CBF Recommendations"):
     recs = recommend_content(itemid=itemid_input, top_n=5)
     st.write("📌 Recommended Items:", recs)
 
+
 # -------------------------------
-# Collaborative Filtering
+# Collaborative Filtering (Optimized with Sparse Matrix + NearestNeighbors)
 # -------------------------------
 st.header("👥 Collaborative Filtering (CF)")
 
+from scipy.sparse import csr_matrix
+from sklearn.neighbors import NearestNeighbors
+
+# Map implicit events to weights
 weight_map = {"view": 1, "addtocart": 3, "transaction": 5}
 events_sample["weight"] = events_sample["event"].map(weight_map).fillna(0)
 
-user_item_matrix = events_sample.pivot_table(
-    index="visitorid", columns="itemid", values="weight", fill_value=0
+# Reindex visitorid and itemid to avoid huge sparse matrices with gaps
+visitor_id_map = {vid: i for i, vid in enumerate(events_sample["visitorid"].unique())}
+item_id_map = {iid: i for i, iid in enumerate(events_sample["itemid"].unique())}
+
+events_sample["visitor_idx"] = events_sample["visitorid"].map(visitor_id_map)
+events_sample["item_idx"] = events_sample["itemid"].map(item_id_map)
+
+# Create sparse user–item matrix
+user_item_sparse = csr_matrix(
+    (events_sample["weight"], (events_sample["visitor_idx"], events_sample["item_idx"]))
 )
-user_similarity = cosine_similarity(user_item_matrix)
-user_sim_df = pd.DataFrame(user_similarity, index=user_item_matrix.index, columns=user_item_matrix.index)
+
+st.write("✅ Sparse user–item matrix shape:", user_item_sparse.shape)
+
+# Fit NearestNeighbors on sparse matrix
+nn_model_cf = NearestNeighbors(metric="cosine", algorithm="brute")
+nn_model_cf.fit(user_item_sparse)
 
 def recommend_cf(visitorid, top_n=5):
-    if visitorid not in user_item_matrix.index:
+    """Recommend items for a visitor using CF"""
+    if visitorid not in visitor_id_map:
         return []
-    similar_users = user_sim_df[visitorid].sort_values(ascending=False).index[1:]
-    recommendations = events_sample[events_sample["visitorid"].isin(similar_users)] \
-                        .groupby("itemid")["weight"].sum().sort_values(ascending=False)
+    
+    visitor_idx = visitor_id_map[visitorid]
+    distances, neighbors = nn_model_cf.kneighbors(
+        user_item_sparse[visitor_idx], n_neighbors=top_n+1
+    )
+    
+    neighbor_users = neighbors.flatten()[1:]  # skip self
+    
+    # Aggregate items from similar users
+    neighbor_data = events_sample[events_sample["visitor_idx"].isin(neighbor_users)]
+    recommendations = (
+        neighbor_data.groupby("itemid")["weight"].sum().sort_values(ascending=False)
+    )
+    
+    # Exclude items the visitor already interacted with
     seen_items = set(events_sample[events_sample["visitorid"] == visitorid]["itemid"])
     recommendations = recommendations[~recommendations.index.isin(seen_items)]
+    
     return recommendations.head(top_n).index.tolist()
 
+# Streamlit UI
 visitorid_input = st.number_input("Enter a Visitor ID:", min_value=0, step=1, key="cf")
 if st.button("Get CF Recommendations"):
     recs = recommend_cf(visitorid=visitorid_input, top_n=5)
-    st.write("📌 Recommended Items:", recs)
+    if recs:
+        st.write("📌 Recommended Items:", recs)
+    else:
+        st.warning("No recommendations found (visitor may not exist or has too few interactions).")
+
 
 # -------------------------------
 # Hybrid Recommender
@@ -129,26 +180,45 @@ if st.button("Get Hybrid Recommendations"):
     st.write("📌 Hybrid Recommended Items:", recs)
 
 # -------------------------------
-# User Segmentation
+# User Segmentation (Optimized)
 # -------------------------------
 st.header("👤 User Segmentation (K-Means)")
 
-events_sample["timestamp"] = pd.to_datetime(events_sample["timestamp"])
-events_sample = events_sample.sort_values(by=['visitorid', 'timestamp'])
-events_sample["time_diff"] = events_sample.groupby("visitorid")["timestamp"].diff().dt.total_seconds().fillna(0)
+# Ensure datetime conversion
+events_sample["timestamp"] = pd.to_datetime(events_sample["timestamp"], errors="coerce")
 
+# Sort and compute time differences
+events_sample = events_sample.sort_values(by=["visitorid", "timestamp"])
+events_sample["time_diff"] = (
+    events_sample.groupby("visitorid")["timestamp"].diff().dt.total_seconds().fillna(0)
+)
+
+# Precompute masks for efficiency
+views = events_sample[events_sample["event"] == "view"]
+carts = events_sample[events_sample["event"] == "addtocart"]
+transactions = events_sample[events_sample["event"] == "transaction"]
+
+# Aggregate user features
 user_features = events_sample.groupby("visitorid").agg(
     num_events=("event", "count"),
-    unique_events=("event", lambda x: x.nunique()),
+    unique_events=("event", pd.Series.nunique),
     time_spent=("time_diff", "sum"),
     avg_time_between=("time_diff", "mean"),
-    num_items_viewed=("itemid", lambda x: x[events_sample.loc[x.index, 'event'] == 'view'].nunique()),
-    num_adds_to_cart=("itemid", lambda x: x[events_sample.loc[x.index, 'event'] == 'addtocart'].nunique()),
-    num_transactions=("itemid", lambda x: x[events_sample.loc[x.index, 'event'] == 'transaction'].nunique())
+    max_time_between=("time_diff", "max")
 ).reset_index()
 
+# Add counts without scanning full dataframe repeatedly
+user_features["num_items_viewed"] = views.groupby("visitorid")["itemid"].nunique()
+user_features["num_adds_to_cart"] = carts.groupby("visitorid")["itemid"].nunique()
+user_features["num_transactions"] = transactions.groupby("visitorid")["itemid"].nunique()
+
+# Replace NaNs (for users missing some event types)
+user_features = user_features.fillna(0)
+
+# Scale and cluster
 scaler = StandardScaler()
 scaled_user_features = scaler.fit_transform(user_features.drop("visitorid", axis=1))
+
 kmeans = KMeans(n_clusters=3, random_state=42, n_init=10)
 user_features["cluster_label"] = kmeans.fit_predict(scaled_user_features)
 
@@ -156,18 +226,20 @@ st.write("📊 Distribution of Users Across Clusters:")
 st.bar_chart(user_features["cluster_label"].value_counts())
 
 # -------------------------------
-# Anomaly Detection
+# Anomaly Detection (Optimized)
 # -------------------------------
 st.header("🚨 Anomaly Detection (Isolation Forest)")
 
 features_for_anomaly = user_features.drop(["visitorid", "cluster_label"], axis=1)
+
+# Already scaled above, reuse
 scaled_features = scaler.transform(features_for_anomaly)
-isolation_forest = IsolationForest(contamination="auto", random_state=42)
+
+isolation_forest = IsolationForest(contamination=0.05, random_state=42)  # limit anomalies
 user_features["anomaly_label"] = isolation_forest.fit_predict(scaled_features)
 
 st.write("✅ Normal Users:", (user_features["anomaly_label"] == 1).sum())
 st.write("⚠️ Abnormal Users:", (user_features["anomaly_label"] == -1).sum())
 
-abnormal_visitors = user_features[user_features["anomaly_label"] == -1]["visitorid"].tolist()
 if st.checkbox("Show Abnormal User IDs"):
-    st.write(abnormal_visitors)
+    st.write(user_features[user_features["anomaly_label"] == -1]["visitorid"].tolist())
