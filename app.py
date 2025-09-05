@@ -15,41 +15,57 @@ from sklearn.ensemble import IsolationForest
 # -------------------------------
 @st.cache_data
 def load_data(events_path, item_props_path, category_tree_path, sample_percentage=0.02):
-    events_df_filtered = pd.read_csv(events_path)
-    item_props_filtered = pd.read_csv(item_props_path)
-    category_tree = pd.read_csv(category_tree_path)
+    try:
+        events_df_filtered = pd.read_csv(events_path)
+        item_props_filtered = pd.read_csv(item_props_path)
+        category_tree = pd.read_csv(category_tree_path)
 
-    # Sample for performance
-    events_sample = events_df_filtered.sample(frac=sample_percentage, random_state=42)
-    item_props_sample = item_props_filtered.sample(frac=sample_percentage, random_state=42)
+        # Sample for performance
+        events_sample = events_df_filtered.sample(frac=sample_percentage, random_state=42)
+        item_props_sample = item_props_filtered.sample(frac=sample_percentage, random_state=42)
 
-    return events_df_filtered, events_sample, item_props_filtered, item_props_sample, category_tree
-
+        return events_df_filtered, events_sample, item_props_filtered, item_props_sample, category_tree
+    except Exception as e:
+        st.error(f"❌ Error loading data: {e}")
+        return None, None, None, None, None
 
 # -------------------------------
-# Recommendation Models
+# Build Models
 # -------------------------------
 def build_models(events_sample, item_props_sample):
-    # Content-Based
-    item_features = item_props_sample.groupby("itemid")["value"].apply(lambda x: " ".join(x.astype(str))).reset_index()
-    tfidf = TfidfVectorizer(stop_words="english")
-    tfidf_matrix = tfidf.fit_transform(item_features["value"])
-    cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
-    indices = pd.Series(item_features.index, index=item_features["itemid"])
+    try:
+        # Content-Based
+        item_features = item_props_sample.groupby("itemid")["value"].apply(lambda x: " ".join(x.astype(str))).reset_index()
+        tfidf = TfidfVectorizer(stop_words="english")
+        tfidf_matrix = tfidf.fit_transform(item_features["value"])
+        cosine_sim = linear_kernel(tfidf_matrix, tfidf_matrix)
+        indices = pd.Series(item_features.index, index=item_features["itemid"])
 
-    # Collaborative
-    weight_map = {"view": 1, "addtocart": 3, "transaction": 5}
-    events_sample["weight"] = events_sample["event"].map(weight_map).fillna(0)
+        # Collaborative
+        weight_map = {"view": 1, "addtocart": 3, "transaction": 5}
+        if "event" not in events_sample.columns:
+            st.error("❌ 'event' column missing in events file")
+            return None, None, None, None, None
 
-    user_item_matrix = events_sample.pivot_table(
-        index="visitorid", columns="itemid", values="weight", fill_value=0
-    )
-    user_similarity = cosine_similarity(user_item_matrix)
-    user_sim_df = pd.DataFrame(user_similarity, index=user_item_matrix.index, columns=user_item_matrix.index)
+        events_sample["weight"] = events_sample["event"].map(weight_map).fillna(0)
+        if not {"visitorid", "itemid"}.issubset(events_sample.columns):
+            st.error("❌ 'visitorid' or 'itemid' column missing in events file")
+            return None, None, None, None, None
 
-    return item_features, cosine_sim, indices, user_item_matrix, user_sim_df
+        user_item_matrix = events_sample.pivot_table(
+            index="visitorid", columns="itemid", values="weight", fill_value=0
+        )
+        user_similarity = cosine_similarity(user_item_matrix)
+        user_sim_df = pd.DataFrame(user_similarity, index=user_item_matrix.index, columns=user_item_matrix.index)
 
+        return item_features, cosine_sim, indices, user_item_matrix, user_sim_df
+    except Exception as e:
+        st.error(f"❌ Error building models: {e}")
+        return None, None, None, None, None
 
+# -------------------------------
+# Recommendation Functions
+# -------------------------------
 def recommend_content(itemid, item_features, cosine_sim, indices, top_n=5):
     if itemid not in indices:
         return pd.DataFrame()
@@ -59,35 +75,27 @@ def recommend_content(itemid, item_features, cosine_sim, indices, top_n=5):
     scores = [s[1] for s in sim_scores]
     return pd.DataFrame({"itemid": item_features.iloc[item_indices]["itemid"].tolist(), "score": scores})
 
-
 def recommend_cf(visitorid, events_sample, user_item_matrix, user_sim_df, top_n=5):
     if visitorid not in user_item_matrix.index:
         return pd.DataFrame()
-
     similar_users = user_sim_df[visitorid].sort_values(ascending=False).index[1:]
     recommendations = events_sample[events_sample["visitorid"].isin(similar_users)] \
                         .groupby("itemid")["weight"].sum().sort_values(ascending=False)
-
     seen_items = set(events_sample[events_sample["visitorid"] == visitorid]["itemid"])
     recommendations = recommendations[~recommendations.index.isin(seen_items)]
-
     return recommendations.head(top_n).reset_index().rename(columns={"weight": "score"})
-
 
 def hybrid_recommend(visitorid, itemid, item_features, cosine_sim, indices,
                      events_sample, user_item_matrix, user_sim_df, alpha=0.6, top_n=5):
     cf_df = recommend_cf(visitorid, events_sample, user_item_matrix, user_sim_df, top_n*2)
     cb_df = recommend_content(itemid, item_features, cosine_sim, indices, top_n*2)
-
     scores = {}
     for i, row in cf_df.iterrows():
         scores[row["itemid"]] = scores.get(row["itemid"], 0) + alpha*(1/(i+1))
     for i, row in cb_df.iterrows():
         scores[row["itemid"]] = scores.get(row["itemid"], 0) + (1-alpha)*(1/(i+1))
-
     return pd.DataFrame(sorted(scores.items(), key=lambda x: x[1], reverse=True)[:top_n],
                         columns=["itemid", "score"])
-
 
 def recommend_by_category(itemid, item_props_filtered, top_n=5):
     item_category_map = item_props_filtered[item_props_filtered["property"] == "categoryid"].set_index("itemid")["value"].to_dict()
@@ -96,7 +104,6 @@ def recommend_by_category(itemid, item_props_filtered, top_n=5):
     category = item_category_map[itemid]
     same_category_items = [k for k, v in item_category_map.items() if v == category and k != itemid]
     return pd.DataFrame({"itemid": same_category_items[:top_n]})
-
 
 def hybrid_category(visitorid, itemid, item_props_filtered, *args, **kwargs):
     base_recs = hybrid_recommend(visitorid, itemid, *args, **kwargs, top_n=15)
@@ -107,15 +114,13 @@ def hybrid_category(visitorid, itemid, item_props_filtered, *args, **kwargs):
     filtered = base_recs[base_recs["itemid"].map(lambda x: item_category_map.get(x) == target_cat)]
     return filtered.head(kwargs.get("top_n", 5))
 
-
 # -------------------------------
-# User Segmentation & Anomaly Detection
+# User Features (Segmentation + Anomaly)
 # -------------------------------
 def build_user_features(events_sample):
     events_sample = events_sample.sort_values(by=["visitorid", "timestamp"])
     events_sample["timestamp"] = pd.to_datetime(events_sample["timestamp"])
     events_sample["time_diff"] = events_sample.groupby("visitorid")["timestamp"].diff().dt.total_seconds().fillna(0)
-
     user_features = events_sample.groupby("visitorid").agg(
         num_events=("event", "count"),
         unique_events=("event", "nunique"),
@@ -128,14 +133,12 @@ def build_user_features(events_sample):
     ).reset_index()
     return user_features
 
-
 def cluster_users(user_features, n_clusters=3):
     scaler = StandardScaler()
     scaled = scaler.fit_transform(user_features.drop("visitorid", axis=1))
     kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init=10)
     user_features["cluster_label"] = kmeans.fit_predict(scaled)
     return user_features
-
 
 def detect_anomalies(user_features):
     features = user_features.drop(["visitorid", "cluster_label"], axis=1)
@@ -145,12 +148,11 @@ def detect_anomalies(user_features):
     user_features["anomaly_label"] = iso.fit_predict(scaled)
     return user_features
 
-
 # -------------------------------
 # Streamlit UI
 # -------------------------------
 st.set_page_config(page_title="E-commerce Recommender", layout="wide")
-st.title("🛒 E-commerce Recommendation System")
+st.title("🛒 E-commerce Recommendation System (Debug Mode)")
 
 # File uploads
 st.sidebar.header("Upload Data Files")
@@ -159,11 +161,26 @@ item_props_file = st.sidebar.file_uploader("Upload item_props_filtered.csv", typ
 category_tree_file = st.sidebar.file_uploader("Upload category_tree.csv", type="csv")
 
 if events_file and item_props_file and category_tree_file:
+    st.info("📂 Files uploaded. Loading data...")
     events_df_filtered, events_sample, item_props_filtered, item_props_sample, category_tree = load_data(
         events_file, item_props_file, category_tree_file
     )
 
+    if events_df_filtered is None:
+        st.stop()
+
+    # Debug: Show columns of uploaded files
+    with st.expander("🔎 Debug: Uploaded Data Info"):
+        st.write("Events file columns:", events_df_filtered.columns.tolist())
+        st.write("Item props file columns:", item_props_filtered.columns.tolist())
+        st.write("Category tree file columns:", category_tree.columns.tolist())
+
+    st.info("⚙️ Building models...")
     item_features, cosine_sim, indices, user_item_matrix, user_sim_df = build_models(events_sample, item_props_sample)
+    if item_features is None:
+        st.stop()
+    st.success("✅ Models built successfully!")
+
     user_features = build_user_features(events_sample)
     user_features = cluster_users(user_features)
     user_features = detect_anomalies(user_features)
@@ -213,9 +230,11 @@ if events_file and item_props_file and category_tree_file:
     with tab2:
         st.subheader("User Segments")
         st.dataframe(user_features[["visitorid", "cluster_label"]].head(20))
+        st.bar_chart(user_features["cluster_label"].value_counts())
 
     with tab3:
         st.subheader("Anomaly Detection")
         st.dataframe(user_features[["visitorid", "anomaly_label"]].head(20))
+        st.bar_chart(user_features["anomaly_label"].value_counts())
 else:
     st.info("⬅️ Please upload all required CSV files to begin.")
