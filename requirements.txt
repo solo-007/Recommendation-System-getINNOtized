@@ -1,6 +1,18 @@
-streamlit
-pandas
-numpy
-scikit-learn
-matplotlib
-networkx
+# Core
+streamlit==1.37.0
+pandas==2.2.2
+numpy==1.26.4
+
+# Machine Learning
+scikit-learn==1.5.1
+scipy==1.13.1
+
+# Visualization
+matplotlib==3.9.1
+seaborn==0.13.2
+
+# Extra utilities
+networkx==3.3
+
+# Google Drive file loading (optional, but safer)
+gdown==5.1.0
