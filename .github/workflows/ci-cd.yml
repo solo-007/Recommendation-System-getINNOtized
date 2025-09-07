@@ -1,0 +1,42 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]   # Runs when you push to main branch
+  pull_request:
+    branches: [ main ]   # Also runs on PRs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repo
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Set up Python
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Run tests (if you add tests later)
+      - name: Run Tests
+        run: |
+          echo "✅ No tests yet, add them in /tests"
+          # pytest tests/   # uncomment if you add test files
+
+  # Optional: Deploy Job
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Streamlit Cloud
+        run: echo "🚀 Deployment happens automatically on Streamlit Cloud when main branch updates"
